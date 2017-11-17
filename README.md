@@ -39,7 +39,7 @@ use Teknasyon\Crond\Locker\RedisLocker;
 use Teknasyon\Crond\Worker;
 
 try {
-$worker = new Worker($cronConfig, $locker, 10000);
+$worker = new Worker($cronConfig, $locker);
 $worker->setLogger($myPsrLoggerInterfacedObj);
 $worker->run();
 

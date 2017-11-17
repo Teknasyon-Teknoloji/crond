@@ -7,7 +7,7 @@ use Psr\Log\LoggerInterface;
 use Teknasyon\Crond\Locker\BaseLocker;
 use Teknasyon\Crond\Locker\Locker;
 
-class Worker
+class Daemon
 {
     /**
      * @var CronJob[]
@@ -18,13 +18,10 @@ class Worker
      * @var BaseLocker
      */
     private $locker;
-    private $terminated    = false;
-    private $maxIterations = 0;
-    private $iterations    = 0;
     private $logger;
-    private $cronArgName   = 'run-uniq-cron';
+    private $cronArgName = 'run-uniq-cron';
 
-    public function __construct(array $cronConfigList, Locker $locker, $maxIterations = 0)
+    public function __construct(array $cronConfigList, Locker $locker)
     {
         foreach ($cronConfigList as $cronId => $cronConfig) {
             $this->cronList[$cronId] = new CronJob(
@@ -34,10 +31,7 @@ class Worker
                 $cronConfig['locktime']
             );
         }
-        $this->locker        = $locker;
-        $this->maxIterations = $maxIterations;
-
-        $this->handleSignals();
+        $this->locker = $locker;
     }
 
     /**
@@ -55,44 +49,10 @@ class Worker
         }
     }
 
-    protected function handleSignals()
-    {
-        if (!function_exists('pcntl_signal')) {
-            throw new \Exception('Please make sure that \'pcntl\' is enabled if you want us to handle signals');
-        }
-
-        declare(ticks = 1);
-        pcntl_signal(SIGTERM, [$this, 'terminate']);
-        pcntl_signal(SIGINT,  [$this, 'terminate']);
-    }
-
     public function isDaemon()
     {
         return php_sapi_name()=='cli'
             && strpos(trim(implode(' ', $_SERVER['argv'])), ' --' . $this->cronArgName . '=')===false;
-    }
-
-    protected function starting()
-    {
-        return true;
-    }
-
-    protected function finished()
-    {
-        return true;
-    }
-
-    protected function isRunning()
-    {
-        if ($this->terminated) {
-            return false;
-        }
-
-        if ($this->maxIterations > 0) {
-            return $this->iterations < $this->maxIterations;
-        }
-
-        return true;
     }
 
     protected function isValidCronJob(CronJob $cronJob)
@@ -119,32 +79,25 @@ class Worker
         return 'php ' . $prefix . $_SERVER['argv'][0] . ' --' . $this->cronArgName . '=' . $cronId;
     }
 
-    private function start()
+    private function crond()
     {
-        $this->iterations = 0;
-        $this->starting();
-        while ($this->isRunning()) {
-            ++$this->iterations;
-            $this->log('info', $this->iterations . '. iteration started');
-            foreach ($this->cronList as $cronJob) {
-                if (CronExpression::factory($cronJob->getExpression())->isDue()===false) {
-                    continue;
-                }
-                $this->log('info', $cronJob . ' running...');
-                unset($output);unset($retVal);
-                if ($cronJob->getLockTime()==0) {
-                    @exec($cronJob->getCmd() . ' &> /dev/null &', $output, $retVal);
-                } else {
-                    @exec($this->getRunCmd($cronJob->getId()) . ' &> /dev/null &', $output, $retVal);
-                }
-
-                if ($retVal!==0) {
-                    throw new \Exception($cronJob . ' start failed!');
-                }
+        $this->log('info', 'Crond started');
+        foreach ($this->cronList as $cronJob) {
+            if (CronExpression::factory($cronJob->getExpression())->isDue()===false) {
+                continue;
             }
-            $this->sleep();
+            $this->log('info', $cronJob . ' is running...');
+            unset($output);unset($retVal);
+            if ($cronJob->getLockTime()==0) {
+                @exec($cronJob->getCmd() . ' &> /dev/null &', $output, $retVal);
+            } else {
+                @exec($this->getRunCmd($cronJob->getId()) . ' &> /dev/null &', $output, $retVal);
+            }
+
+            if ($retVal!==0) {
+                $this->log('error', $cronJob . ' failed!');
+            }
         }
-        $this->finished();
     }
 
     private function getCronIdArg()
@@ -190,7 +143,7 @@ class Worker
     public function run()
     {
         if ($this->isDaemon()) {
-            $this->start();
+            $this->crond();
         } else {
             $this->exec();
         }
