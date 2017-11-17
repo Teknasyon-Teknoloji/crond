@@ -30,18 +30,18 @@ $crons = [
 ]
 ```
 - Create your Locker class \Teknasyon\Crond\Locker\MemcachedLocker or \Teknasyon\Crond\Locker\RedisLocker
-- Create \Teknasyon\Crond\Worker with cron config and Locker class
+- Create \Teknasyon\Crond\Daemon with cron config and Locker class
 
 ``` php
 <?php
 
 use Teknasyon\Crond\Locker\RedisLocker;
-use Teknasyon\Crond\Worker;
+use Teknasyon\Crond\Daemon;
 
 try {
-$worker = new Worker($cronConfig, $locker);
-$worker->setLogger($myPsrLoggerInterfacedObj);
-$worker->run();
+$crond = new Daemon($cronConfig, $locker);
+$crond->setLogger($myPsrLoggerInterfacedObj);
+$crond->run();
 
 } catch (\Exception $e) {
     //Error handling
