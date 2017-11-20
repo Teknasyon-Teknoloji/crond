@@ -5,7 +5,7 @@ namespace Teknasyon\Crond\Locker;
 abstract class BaseLocker implements Locker
 {
     protected $uniqIdFunction;
-    protected $keyPrefix = 'sqslocker-';
+    protected $keyPrefix = 'crondlocker-';
     protected $lockedJobId;
 
     public function __construct()
@@ -22,12 +22,11 @@ abstract class BaseLocker implements Locker
 
     public function getJobUniqId($job)
     {
-        if ($this->uniqIdFunction) {
-            $func = $this->uniqIdFunction;
-            return $this->keyPrefix . $func($job);
-        } else {
-            throw new \InvalidArgumentException('Locker::uniqIdFunction not defined!');
+        if (!$job) {
+            throw new \InvalidArgumentException('Locker::getJobUniqId job param not valid!');
         }
+        $func = $this->uniqIdFunction;
+        return $this->keyPrefix . $func($job);
     }
 
     /**
@@ -45,6 +44,4 @@ abstract class BaseLocker implements Locker
     {
         $this->lockedJobId = $lockedJobId;
     }
-
-
 }

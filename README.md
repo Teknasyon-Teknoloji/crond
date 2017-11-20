@@ -15,17 +15,17 @@ $crons = [
     'my_cron_id1' => [
         'expression' => '* * * * *',
         'cmd' => '/usr/bin/php /pathto/myproject/mycron.php',
-        'locktime' => 0 //No need lock
+        'lock' => 0 //No need lock
     ],
     'my_cron_id2' => [
         'expression' => '*/10 * * * *',
         'cmd' => '/usr/bin/php /pathto/myproject/minutecron.php',
-        'locktime' => 600 //Auto Lock for 10 minutes
+        'lock' => 1
     ],
     'my_cron_id2' => [
          'expression' => '* * * * *',
          'cmd' => '/usr/bin/php /pathto/myproject/infinitecron.php',
-         'locktime' => -1 //Manual Lock
+         'lock' => 1
     ]
 ]
 ```
@@ -41,7 +41,7 @@ use Teknasyon\Crond\Daemon;
 try {
 $crond = new Daemon($cronConfig, $locker);
 $crond->setLogger($myPsrLoggerInterfacedObj);
-$crond->run();
+$crond->start();
 
 } catch (\Exception $e) {
     //Error handling

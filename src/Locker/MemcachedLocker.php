@@ -26,24 +26,17 @@ class MemcachedLocker extends BaseLocker
         return 'Memcached ( ' . json_encode($this->memcached->getServerList()) . ' )';
     }
 
-    public function lock($job, $timeout = 30)
+    public function lock($job)
     {
         if (!$job) {
             throw new \RuntimeException('Job for lock is invalid!');
         }
-        if ($timeout>0) {
-            $status = $this->memcached->add(
-                $this->getJobUniqId($job),
-                time() + $timeout + 1,
-                $timeout
-            );
-        } else {
-            $status = $this->memcached->add(
-                $this->getJobUniqId($job),
-                (time() + 2)
-            );
-        }
+        $status = $this->memcached->add(
+            $this->getJobUniqId($job),
+            (time() + 2)
+        );
 
+        $this->setLockedJobId(null);
         if ($status) {
             $this->setLockedJobId($this->getJobUniqId($job));
         }
@@ -54,7 +47,8 @@ class MemcachedLocker extends BaseLocker
     {
         if ($this->getLockedJobId()==$this->getJobUniqId($job)) {
             $this->memcached->delete($this->getJobUniqId($job));
-            $this->setLockedJobId('');
+            $this->setLockedJobId(null);
+            return true;
         } else {
             throw new \RuntimeException('Job not locked by me!');
         }
@@ -63,5 +57,6 @@ class MemcachedLocker extends BaseLocker
     public function disconnect()
     {
         $this->memcached->quit();
+        return true;
     }
 }

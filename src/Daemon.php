@@ -9,6 +9,8 @@ use Teknasyon\Crond\Locker\Locker;
 
 class Daemon
 {
+    private $uniqId;
+
     /**
      * @var CronJob[]
      */
@@ -20,15 +22,20 @@ class Daemon
     private $locker;
     private $logger;
     private $cronArgName = 'run-uniq-cron';
+    /**
+     * @var CronJob
+     */
+    private $lastRunnedCronJob;
 
     public function __construct(array $cronConfigList, Locker $locker)
     {
+        $this->uniqId = md5(gethostname());
         foreach ($cronConfigList as $cronId => $cronConfig) {
             $this->cronList[$cronId] = new CronJob(
                 $cronId,
                 $cronConfig['expression'],
                 $cronConfig['cmd'],
-                $cronConfig['locktime']
+                (isset($cronConfig['lock']) && $cronConfig['lock']==false)?false:true
             );
         }
         $this->locker = $locker;
@@ -55,22 +62,7 @@ class Daemon
             && strpos(trim(implode(' ', $_SERVER['argv'])), ' --' . $this->cronArgName . '=')===false;
     }
 
-    protected function isValidCronJob(CronJob $cronJob)
-    {
-         return CronExpression::factory($cronJob->getExpression())->isDue();
-    }
-
-    protected function sleep()
-    {
-        $secToNextMinute = strtotime('next minute') - time();
-        if ($secToNextMinute>2) {
-            sleep(($secToNextMinute-2));
-        } else {
-            usleep(200000);
-        }
-    }
-
-    private function getRunCmd($cronId)
+    public function getRunCmd($cronId)
     {
         $prefix = '';
         if (substr($_SERVER['argv'][0], 0, 1)!=DIRECTORY_SEPARATOR) {
@@ -88,19 +80,14 @@ class Daemon
             }
             $this->log('info', $cronJob . ' is running...');
             unset($output);unset($retVal);
-            if ($cronJob->getLockTime()==0) {
-                @exec($cronJob->getCmd() . ' &> /dev/null &', $output, $retVal);
-            } else {
-                @exec($this->getRunCmd($cronJob->getId()) . ' &> /dev/null &', $output, $retVal);
-            }
-
+            @exec($this->getRunCmd($cronJob->getId()) . ' &> /dev/null &', $output, $retVal);
             if ($retVal!==0) {
                 $this->log('error', $cronJob . ' failed!');
             }
         }
     }
 
-    private function getCronIdArg()
+    public function getCronIdArg()
     {
         $cronId = null;
         foreach ($_SERVER['argv'] as $arg) {
@@ -113,7 +100,15 @@ class Daemon
         return $cronId;
     }
 
-    private function exec()
+    /**
+     * @return CronJob
+     */
+    public function getLastRunnedCronJob()
+    {
+        return $this->lastRunnedCronJob;
+    }
+
+    private function runJob()
     {
         $cronId = $this->getCronIdArg();
         if (!$cronId || isset($this->cronList[$cronId])===false) {
@@ -121,31 +116,30 @@ class Daemon
                 'Cron-id argument not found! ARGV: ' . json_encode($_SERVER['argv'])
             );
         }
-        $cronJob  = $this->cronList[$cronId];
-        if ($this->locker->lock($cronJob->getId(), $cronJob->getLockTime())===false) {
+        $this->lastRunnedCronJob = $this->cronList[$cronId];
+
+        $lockId = $cronId . ($this->lastRunnedCronJob->isLockRequired()===false?date('YmdHi'):'');
+        if ($this->locker->lock($lockId)===false) {
             throw new \RuntimeException(
-                'Cron #' . $cronJob->getId() . ' lock failed!'
+                'Cron #' . $cronId . ' lock failed! LockId: ' . $lockId
             );
         }
-
-        @exec($cronJob->getCmd(), $output, $retval);
-        if ($cronJob->getLockTime()==-1) {
-            $this->locker->unlock($cronJob->getId());
-        }
+        @exec($this->lastRunnedCronJob->getCmd(), $output, $retval);
+        $this->locker->unlock($lockId);
         if ($retval!==0) {
             throw new \RuntimeException(
-                'Cron #' . $cronJob->getId() . ' run failed!'
-                . ' Retval: ' . $retval.', Output: ' . json_encode($output)
+                'Cron #' . $cronId . ' run failed!'
+                . ' LockId: ' . $lockId . ', Retval: ' . $retval.', Output: ' . json_encode($output)
             );
         }
     }
 
-    public function run()
+    public function start()
     {
         if ($this->isDaemon()) {
             $this->crond();
         } else {
-            $this->exec();
+            $this->runJob();
         }
     }
 }

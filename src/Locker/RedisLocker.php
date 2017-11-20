@@ -28,19 +28,14 @@ class RedisLocker extends BaseLocker
             . ' )';
     }
 
-    public function lock($job, $timeout = 40)
+    public function lock($job)
     {
         if (!$job) {
             throw new \RuntimeException('Job for lock is invalid!');
         }
 
-        if ($timeout>0) {
-            $value   = time() + $timeout + 1;
-            $options = array('nx', 'ex' => $timeout);
-        } else {
-            $options = array('nx');
-            $value   = time() + 2;
-        }
+        $options = array('nx');
+        $value   = time() + 2;
 
         $key    = $this->getJobUniqId($job);
         $status = $this->redis->set(
@@ -70,7 +65,8 @@ class RedisLocker extends BaseLocker
     {
         if ($this->getLockedJobId()==$this->getJobUniqId($job)) {
             $this->redis->delete($this->getJobUniqId($job));
-            $this->setLockedJobId('');
+            $this->setLockedJobId(null);
+            return true;
         } else {
             throw new \RuntimeException('Job not locked by me!');
         }
@@ -79,5 +75,6 @@ class RedisLocker extends BaseLocker
     public function disconnect()
     {
         $this->redis->close();
+        return true;
     }
 }

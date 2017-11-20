@@ -1,8 +1,8 @@
 {
-  "name": "teknasyon/aws-crond",
-  "description": "Distributed Cron Worker with AWS SQS and CloudWatch",
-  "keywords": ["aws", "amazon", "sqs", "cron", "crond", "worker","php","teknasyon"],
-  "homepage": "https://github.com/teknasyon-teknoloji/aws-crond",
+  "name": "teknasyon/distributed-crond",
+  "description": "Distributed Cron Worker",
+  "keywords": ["cron", "cronjob", "crond", "worker","php","teknasyon", "redis", "lock"],
+  "homepage": "https://github.com/teknasyon-teknoloji/crond",
   "type": "library",
   "license": "MIT",
   "authors": [
@@ -14,7 +14,6 @@
   ],
   "require": {
     "php": ">=7.0",
-    "aws/aws-sdk-php": "3.*@stable",
     "mtdowling/cron-expression": "1.2.*@stable",
     "psr/log":"1.0.*@stable"
   },
