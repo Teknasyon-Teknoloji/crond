@@ -1,5 +1,5 @@
 {
-  "name": "teknasyon/distributed-crond",
+  "name": "teknasyon/crond",
   "description": "Distributed Cron Worker",
   "keywords": ["cron", "cronjob", "crond", "worker","php","teknasyon", "redis", "lock"],
   "homepage": "https://github.com/teknasyon-teknoloji/crond",
