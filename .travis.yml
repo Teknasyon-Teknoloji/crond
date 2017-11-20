@@ -2,12 +2,15 @@ language: php
 php:
   - 7.0
   - 7.1
+  - 7.2
 
 services:
   - memcached
+  - redis-server
 
 before_script:
   - echo "extension = memcached.so" >> ~/.phpenv/versions/$(phpenv version-name)/etc/php.ini
+  - echo "extension = redis.so" >> ~/.phpenv/versions/$(phpenv version-name)/etc/php.ini
   - composer self-update
   - composer install --no-interaction
 
