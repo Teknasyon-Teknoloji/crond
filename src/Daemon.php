@@ -64,11 +64,16 @@ class Daemon
 
     public function getRunCmd($cronId)
     {
-        $prefix = '';
-        if (substr($_SERVER['argv'][0], 0, 1)!=DIRECTORY_SEPARATOR) {
-            $prefix = getcwd() . DIRECTORY_SEPARATOR;
+        $selfPhp = array_shift($_SERVER['argv']);
+        if (substr($selfPhp, 0, 1)!=DIRECTORY_SEPARATOR) {
+            $selfPhp = getcwd() . DIRECTORY_SEPARATOR . $selfPhp;
         }
-        return 'php ' . $prefix . $_SERVER['argv'][0] . ' --' . $this->cronArgName . '=' . $cronId;
+        if (count($_SERVER['argv'])>0) {
+            $args = ' ' . implode(' ', $_SERVER['argv']);
+        } else {
+            $args = '';
+        }
+        return 'php ' . $selfPhp . $args . ' --' . $this->cronArgName . '=' . $cronId;
     }
 
     private function crond()
@@ -78,11 +83,12 @@ class Daemon
             if (CronExpression::factory($cronJob->getExpression())->isDue()===false) {
                 continue;
             }
-            $this->log('info', $cronJob . ' is running...');
             unset($output);unset($retVal);
             @exec($this->getRunCmd($cronJob->getId()) . ' &> /dev/null &', $output, $retVal);
             if ($retVal!==0) {
                 $this->log('error', $cronJob . ' failed!');
+            } else {
+                $this->log('info', $cronJob . ' started');
             }
         }
     }

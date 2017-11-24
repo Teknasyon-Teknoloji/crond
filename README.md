@@ -24,8 +24,7 @@ $crons = [
     ],
     'my_cron_id2' => [
          'expression' => '* * * * *',
-         'cmd' => '/usr/bin/php /pathto/myproject/infinitecron.php',
-         'lock' => 1
+         'cmd' => '/usr/bin/php /pathto/myproject/infinitecron.php' // Like lock:1
     ]
 ]
 ```

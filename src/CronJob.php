@@ -61,8 +61,8 @@ class CronJob
     public function __toString()
     {
         return 'CronJob'
-            . ($this->isLockRequired?(' with lock required '):'')
             . ' #' . $this->id
+            . ($this->isLockRequired?(' with lock-activated '):'')
             . ' ( '. $this->expression.' '. $this->cmd.' )';
     }
 
