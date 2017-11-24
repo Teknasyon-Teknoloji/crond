@@ -62,7 +62,7 @@ class CronJob
     {
         return 'CronJob'
             . ' #' . $this->id
-            . ($this->isLockRequired?(' with lock-activated '):'')
+            . ($this->isLockRequired?(' with lock-activated'):'')
             . ' ( '. $this->expression.' '. $this->cmd.' )';
     }
 

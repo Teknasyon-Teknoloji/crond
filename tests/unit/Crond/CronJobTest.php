@@ -78,7 +78,7 @@ class CronJobTest extends TestCase
     {
         $cronJob = new CronJob('test', '0 * * * *', 'date');
         $this->assertEquals(
-            'CronJob with lock required  #test ( 0 * * * * date )',
+            'CronJob #test with lock-activated ( 0 * * * * date )',
             '' . $cronJob,
             'CronJob::__toString failed!'
         );

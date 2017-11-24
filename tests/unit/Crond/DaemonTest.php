@@ -31,4 +31,41 @@ class DaemonTest extends TestCase
         $memcachedLocker = new MemcachedLocker($memcachedMock);
         $daemon = new Daemon(['test' => ['cmd' => 'date', 'expression' => '0 * * * *']], $memcachedLocker);
     }
+
+    public function testGetRunCmd()
+    {
+        $prefix = getcwd() . DIRECTORY_SEPARATOR;
+        $memcachedMock = $this->setMemcachedMock();
+        $memcachedMock->method('add')->willReturn(false);
+        $memcachedLocker = new MemcachedLocker($memcachedMock);
+        $daemon = new Daemon(['test' => ['cmd' => 'date', 'expression' => '0 * * * *']], $memcachedLocker);
+
+        $_SERVER['argv'] = [
+            'crond.php',
+            '-e=stage',
+            'test',
+            '--config=xml',
+            '-d',
+            '-f 1'
+        ];
+        $this->assertEquals(
+            'php ' . $prefix . implode(' ', $_SERVER['argv']) . ' --run-uniq-cron=testId',
+            $daemon->getRunCmd('testId'),
+            'Daemon::getRunCmd failed!'
+        );
+
+        $_SERVER['argv'] = [
+            '/tmp/crond.php',
+            '-e=stage',
+            'test',
+            '--config=xml',
+            '-d',
+            '-f 1'
+        ];
+        $this->assertEquals(
+            'php ' . implode(' ', $_SERVER['argv']) . ' --run-uniq-cron=testId',
+            $daemon->getRunCmd('testId'),
+            'Daemon::getRunCmd failed!'
+        );
+    }
 }
