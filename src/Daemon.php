@@ -64,12 +64,13 @@ class Daemon
 
     public function getRunCmd($cronId)
     {
-        $selfPhp = array_shift($_SERVER['argv']);
+        $argv    = $_SERVER['argv'];
+        $selfPhp = array_shift($argv);
         if (substr($selfPhp, 0, 1)!=DIRECTORY_SEPARATOR) {
             $selfPhp = getcwd() . DIRECTORY_SEPARATOR . $selfPhp;
         }
-        if (count($_SERVER['argv'])>0) {
-            $args = ' ' . implode(' ', $_SERVER['argv']);
+        if (count($argv)>0) {
+            $args = ' ' . implode(' ', $argv);
         } else {
             $args = '';
         }
