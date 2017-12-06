@@ -64,7 +64,8 @@ class RedisLocker extends BaseLocker
     public function unlock($job)
     {
         if ($this->getLockedJobId()==$this->getJobUniqId($job)) {
-            $this->redis->delete($this->getJobUniqId($job));
+            //$this->redis->delete($this->getJobUniqId($job));
+            $this->redis->set($this->getJobUniqId($job), (time()+6), 5);
             $this->setLockedJobId(null);
             return true;
         } else {

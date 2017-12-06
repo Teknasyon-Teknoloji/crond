@@ -198,13 +198,14 @@ class RedisLockerTest extends TestCase
     public function testUnlockSuccess()
     {
         $redisMock = $this->setRedisMock();
-        $redisMock->method('delete')->willReturn(true);
+        $redisMock->method('set')->willReturn(true);
         $redisLocker = new RedisLocker($redisMock);
         $redisLocker->setLockedJobId($redisLocker->getJobUniqId('test'));
         $this->assertTrue(
             $redisLocker->unlock('test'),
             'RedisLocker::unlock success test failed!'
         );
+        $this->assertNull($redisLocker->getLockedJobId(), 'RedisLocker::unlock success test failed!');
     }
 
     public function testDisconnect()
