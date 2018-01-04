@@ -31,23 +31,27 @@ class MemcachedLocker extends BaseLocker
         if (!$job) {
             throw new \RuntimeException('Job for lock is invalid!');
         }
+
+        $this->resetLockedJob($job);
+
+        $value  = $this->generateLockValue($job);
         $status = $this->memcached->add(
             $this->getJobUniqId($job),
-            (time() + 2)
+            $value
         );
 
-        $this->setLockedJobId(null);
         if ($status) {
-            $this->setLockedJobId($this->getJobUniqId($job));
+            $this->setLockedJob($job, $value);
         }
         return $status;
     }
 
     public function unlock($job)
     {
-        if ($this->getLockedJobId()==$this->getJobUniqId($job)) {
-            $this->memcached->delete($this->getJobUniqId($job));
-            $this->setLockedJobId(null);
+        $lockedJob = $this->getLockedJob($job);
+        if ($lockedJob && isset($lockedJob['id']) && $lockedJob['id']==$this->getJobUniqId($job)) {
+            $this->memcached->delete($lockedJob['id']);
+            $this->resetLockedJob($job);
             return true;
         } else {
             throw new \RuntimeException('Job not locked by me!');

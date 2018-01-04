@@ -6,7 +6,9 @@ abstract class BaseLocker implements Locker
 {
     protected $uniqIdFunction;
     protected $keyPrefix = 'crondlocker-';
-    protected $lockedJobId;
+    protected $lockedJobId = [];
+    protected $lockedJobValue = [];
+    protected $lockedJob = [];
 
     public function __construct()
     {
@@ -29,19 +31,23 @@ abstract class BaseLocker implements Locker
         return $this->keyPrefix . $func($job);
     }
 
-    /**
-     * @return mixed
-     */
-    public function getLockedJobId()
+    public function generateLockValue($job)
     {
-        return $this->lockedJobId;
+        return gethostname() . '-' . getmypid() . '-' . microtime(true) . '-' . $job;
     }
 
-    /**
-     * @param mixed $lockedJobId
-     */
-    public function setLockedJobId($lockedJobId)
+    public function getLockedJob($job)
     {
-        $this->lockedJobId = $lockedJobId;
+        return isset($this->lockedJob[md5($job)])?$this->lockedJob[md5($job)]:null;
+    }
+
+    public function setLockedJob($job, $value)
+    {
+        $this->lockedJob[md5($job)] = ['id' => $this->getJobUniqId($job), 'value' => $value];
+    }
+
+    public function resetLockedJob($job)
+    {
+        $this->lockedJob[md5($job)] = null;
     }
 }

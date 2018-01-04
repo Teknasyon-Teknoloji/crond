@@ -33,41 +33,44 @@ class RedisLocker extends BaseLocker
         if (!$job) {
             throw new \RuntimeException('Job for lock is invalid!');
         }
+        $this->resetLockedJob($job);
 
-        $options = array('nx');
-        $value   = time() + 2;
-
-        $key    = $this->getJobUniqId($job);
+        $value  = $this->generateLockValue($job);
         $status = $this->redis->set(
-            $key,
+            $this->getJobUniqId($job),
             $value,
-            $options
+            array('nx')
         );
         if ($status) {
-            $this->setLockedJobId($this->getJobUniqId($job));
+            $this->setLockedJob($job, $value);
             return true;
-        }
-
-        $currentLockTimestamp = $this->redis->get($key);
-        if ($currentLockTimestamp > time()) {
+        } else {
             return false;
         }
-        $oldLockTimestamp = $this->redis->getSet($key, $value);
-        if ($oldLockTimestamp > time()) {
-            return false;
-        }
-
-        $this->setLockedJobId($this->getJobUniqId($job));
-        return true;
     }
 
     public function unlock($job)
     {
-        if ($this->getLockedJobId()==$this->getJobUniqId($job)) {
-            //$this->redis->delete($this->getJobUniqId($job));
-            $this->redis->set($this->getJobUniqId($job), (time()+6), 5);
-            $this->setLockedJobId(null);
-            return true;
+        $lockedJob = $this->getLockedJob($job);
+        if ($lockedJob && isset($lockedJob['id']) && $lockedJob['id']==$this->getJobUniqId($job)
+            && isset($lockedJob['value']) && $lockedJob['value']) {
+            $result = $this->redis->eval(
+                '
+                    if redis.call("GET", KEYS[1]) == ARGV[1] then
+                        return redis.call("DEL", KEYS[1])
+                    else
+                        return 0
+                    end
+                ',
+                [$lockedJob['id'], $lockedJob['value']],
+                1
+            );
+            if ($result) {
+                $this->resetLockedJob($job);
+                return true;
+            } else {
+                throw new \RuntimeException('Job not locked by me!');
+            }
         } else {
             throw new \RuntimeException('Job not locked by me!');
         }

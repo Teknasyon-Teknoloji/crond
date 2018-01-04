@@ -62,28 +62,28 @@ class MemcachedLockerTest extends TestCase
         );
     }
 
-    public function testGetLockedJobId()
+    public function testGetLockedJob()
     {
         $this->assertEquals(
             null,
-            $this->memcachedLocker->getLockedJobId(),
-            'MemcachedLocker::getLockedJobId failed!'
+            $this->memcachedLocker->getLockedJob('test'),
+            'MemcachedLocker::getLockedJob failed!'
         );
-        $this->memcachedLocker->setLockedJobId('abc');
+        $this->memcachedLocker->setLockedJob('test', 'value');
         $this->assertEquals(
-            'abc',
-            $this->memcachedLocker->getLockedJobId(),
-            'MemcachedLocker::getLockedJobId failed!'
+            ['id' => 'crondlocker-' . md5(strtolower('test')), 'value' => 'value'],
+            $this->memcachedLocker->getLockedJob('test'),
+            'MemcachedLocker::getLockedJob failed!'
         );
     }
 
-    public function testSetLockedJobId()
+    public function testSetLockedJob()
     {
-        $this->memcachedLocker->setLockedJobId('def');
+        $this->memcachedLocker->setLockedJob('test', 'val');
         $this->assertEquals(
-            'def',
-            $this->memcachedLocker->getLockedJobId(),
-            'MemcachedLocker::getLockedJobId failed!'
+            ['id' => 'crondlocker-' . md5(strtolower('test')), 'value' => 'val'],
+            $this->memcachedLocker->getLockedJob('test'),
+            'MemcachedLocker::setLockedJob failed!'
         );
     }
 
@@ -113,7 +113,7 @@ class MemcachedLockerTest extends TestCase
         );
         $this->assertEquals(
             'crondlocker-' . md5(strtolower('test')),
-            $memcachedLocker->getLockedJobId(),
+            $memcachedLocker->getLockedJob('test')['id'],
             'memcachedLocker::lock success test failed!'
         );
     }
@@ -129,7 +129,7 @@ class MemcachedLockerTest extends TestCase
         );
         $this->assertEquals(
             null,
-            $memcachedLocker->getLockedJobId(),
+            $memcachedLocker->getLockedJob('test'),
             'memcachedLocker::lock fail test failed!'
         );
     }
@@ -142,7 +142,7 @@ class MemcachedLockerTest extends TestCase
 
     public function testUnlockException2()
     {
-        $this->memcachedLocker->setLockedJobId('test1');
+        $this->memcachedLocker->setLockedJob('test1', '');
         $this->expectException('\RuntimeException');
         $this->memcachedLocker->unlock('test');
     }
@@ -152,7 +152,7 @@ class MemcachedLockerTest extends TestCase
         $memcachedMock = $this->setMemcachedMock();
         $memcachedMock->method('delete')->willReturn(true);
         $memcachedLocker = new MemcachedLocker($memcachedMock);
-        $memcachedLocker->setLockedJobId($memcachedLocker->getJobUniqId('test'));
+        $memcachedLocker->setLockedJob('test', 'value');
         $this->assertTrue(
             $memcachedLocker->unlock('test'),
             'memcachedLocker::unlock success test failed!'
