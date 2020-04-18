@@ -6,8 +6,6 @@ abstract class BaseLocker implements Locker
 {
     protected $uniqIdFunction;
     protected $keyPrefix = 'crondlocker-';
-    protected $lockedJobId = [];
-    protected $lockedJobValue = [];
     protected $lockedJob = [];
 
     public function __construct()
@@ -20,6 +18,7 @@ abstract class BaseLocker implements Locker
     public function setJobUniqIdFunction(\Closure $function)
     {
         $this->uniqIdFunction = $function;
+        return true;
     }
 
     public function getJobUniqId($job)
@@ -31,22 +30,33 @@ abstract class BaseLocker implements Locker
         return $this->keyPrefix . $func($job);
     }
 
-    public function generateLockValue($job)
+    protected function generateLockValue($job)
     {
-        return gethostname() . '-' . getmypid() . '-' . microtime(true) . '-' . $job;
+        return gethostname() . ';' . getmypid() . ';' . microtime(true) . ';' . $job;
     }
 
-    public function getLockedJob($job)
+    public function parseLockValue($job, $value)
     {
-        return isset($this->lockedJob[md5($job)])?$this->lockedJob[md5($job)]:null;
+        $parsedValue = substr($value, 0, strpos($value, ';' . $job));
+        list($hostname, $pid, $time) = explode(';', $parsedValue, 3);
+        return [
+            'hostname' => $hostname,
+            'pid' => $pid,
+            'time' => $time,
+        ];
     }
 
-    public function setLockedJob($job, $value)
+    protected function getLockedJob($job)
+    {
+        return isset($this->lockedJob[md5($job)]) ? $this->lockedJob[md5($job)] : null;
+    }
+
+    protected function setLockedJob($job, $value)
     {
         $this->lockedJob[md5($job)] = ['id' => $this->getJobUniqId($job), 'value' => $value];
     }
 
-    public function resetLockedJob($job)
+    protected function resetLockedJob($job)
     {
         $this->lockedJob[md5($job)] = null;
     }

@@ -14,7 +14,7 @@ class RedisLocker extends BaseLocker
         parent::__construct();
 
         $this->redis = $redisClient;
-        if ($this->redis->isConnected()===false) {
+        if ($this->redis->isConnected() === false) {
             throw new \RuntimeException('Redis Client not connected!');
         }
     }
@@ -28,19 +28,21 @@ class RedisLocker extends BaseLocker
             . ' )';
     }
 
+    public function getLockValue($job)
+    {
+        return $this->redis->get($this->getJobUniqId($job));
+    }
+
     public function lock($job)
     {
-        if (!$job) {
-            throw new \RuntimeException('Job for lock is invalid!');
+        if (!$job || (is_string($job) === false && is_numeric($job) === false)) {
+            throw new \InvalidArgumentException('Job for lock is invalid!');
         }
         $this->resetLockedJob($job);
 
-        $value  = $this->generateLockValue($job);
-        $status = $this->redis->set(
-            $this->getJobUniqId($job),
-            $value,
-            array('nx')
-        );
+        $value = $this->generateLockValue($job);
+        $status = $this->redis->setnx($this->getJobUniqId($job), $value);
+
         if ($status) {
             $this->setLockedJob($job, $value);
             return true;
@@ -52,7 +54,7 @@ class RedisLocker extends BaseLocker
     public function unlock($job)
     {
         $lockedJob = $this->getLockedJob($job);
-        if ($lockedJob && isset($lockedJob['id']) && $lockedJob['id']==$this->getJobUniqId($job)
+        if ($lockedJob && isset($lockedJob['id']) && $lockedJob['id'] == $this->getJobUniqId($job)
             && isset($lockedJob['value']) && $lockedJob['value']) {
             $result = $this->redis->eval(
                 '

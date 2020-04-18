@@ -2,6 +2,8 @@
 
 use Teknasyon\Crond\Locker\RedisLocker;
 use PHPUnit\Framework\TestCase;
+use CrondUnitTest\PHPUnitUtil;
+use CrondUnitTest\MockRedis;
 
 class RedisLockerTest extends TestCase
 {
@@ -46,55 +48,14 @@ class RedisLockerTest extends TestCase
 
     public function testSetJobUniqIdFunction()
     {
-        $this->redisLocker->setJobUniqIdFunction(function($str) {
-            return strtoupper($str);
-        });
-        $this->assertEquals(
-            'crondlocker-' . strtoupper('test'),
-            $this->redisLocker->getJobUniqId('test'),
-            'MemcachedLocker::setJobUniqIdFunction failed!'
+        $this->assertTrue(
+            $this->redisLocker->setJobUniqIdFunction(function ($str) {
+                return strtoupper($str);
+            }),
+            'RedisLocker::setJobUniqIdFunction failed!'
         );
     }
 
-    public function testGetJobUniqIdException()
-    {
-        $this->expectException('\InvalidArgumentException');
-        $this->redisLocker->getJobUniqId(null);
-    }
-
-    public function testGetJobUniqId()
-    {
-        $this->assertEquals(
-            'crondlocker-' . md5(strtolower('test')),
-            $this->redisLocker->getJobUniqId('Test'),
-            'RedisLocker::getJobUniqId failed!'
-        );
-    }
-
-    public function testGetLockedJobId()
-    {
-        $this->assertEquals(
-            null,
-            $this->redisLocker->getLockedJob(null),
-            'RedisLocker::getLockedJobId failed!'
-        );
-        $this->redisLocker->setLockedJob('abc', 'val');
-        $this->assertEquals(
-        ['id' => 'crondlocker-' . md5(strtolower('abc')), 'value' => 'val'],
-            $this->redisLocker->getLockedJob('abc'),
-            'RedisLocker::getLockedJobId failed!'
-        );
-    }
-
-    public function testSetLockedJobId()
-    {
-        $this->redisLocker->setLockedJob('def', 'val');
-        $this->assertEquals(
-            ['id' => 'crondlocker-' . md5(strtolower('def')), 'value' => 'val'],
-            $this->redisLocker->getLockedJob('def'),
-            'RedisLocker::setLockedJob failed!'
-        );
-    }
 
     public function testGetLockerInfo()
     {
@@ -105,24 +66,56 @@ class RedisLockerTest extends TestCase
         );
     }
 
-    public function testLockException()
+    public function testLockException1()
     {
-        $this->expectException('\RuntimeException');
+        $this->expectException('\InvalidArgumentException');
+        $this->redisLocker->lock(null);
+    }
+
+    public function testLockException2()
+    {
+        $this->expectException('\InvalidArgumentException');
         $this->redisLocker->lock('');
+    }
+
+    public function testLockException3()
+    {
+        $this->expectException('\InvalidArgumentException');
+        $this->redisLocker->lock(false);
+    }
+
+    public function testLockException4()
+    {
+        $this->expectException('\InvalidArgumentException');
+        $this->redisLocker->lock(true);
+    }
+
+    public function testLockException5()
+    {
+        $this->expectException('\InvalidArgumentException');
+        $this->redisLocker->lock(array());
+    }
+
+    public function testLockException6()
+    {
+        $this->expectException('\InvalidArgumentException');
+        $this->redisLocker->lock(array(1, 2));
+    }
+
+    public function testLockException7()
+    {
+        $this->expectException('\InvalidArgumentException');
+        $this->redisLocker->lock(new \stdClass());
     }
 
     public function testLockSuccess()
     {
         $redisMock = $this->setRedisMock();
         $redisMock->method('set')->willReturn(true);
+        $redisMock->method('setnx')->willReturn(true);
         $redisLocker = new RedisLocker($redisMock);
         $this->assertTrue(
             $redisLocker->lock('test'),
-            'RedisLocker::lock success test failed!'
-        );
-        $this->assertEquals(
-            'crondlocker-' . md5(strtolower('test')),
-            $redisLocker->getLockedJob('test')['id'],
             'RedisLocker::lock success test failed!'
         );
     }
@@ -131,15 +124,24 @@ class RedisLockerTest extends TestCase
     {
         $redisMock = $this->setRedisMock();
         $redisMock->method('set')->willReturn(false);
+        $redisMock->method('setnx')->willReturn(false);
 
         $redisLocker = new RedisLocker($redisMock);
         $this->assertFalse(
             $redisLocker->lock('test'),
             'RedisLocker::lock fail test failed!'
         );
-        $this->assertEquals(
-            null,
-            $redisLocker->getLockedJob('test'),
+    }
+
+    public function testLockFailedWithForce()
+    {
+        $redisMock = $this->setRedisMock();
+        $redisMock->method('set')->willReturn(false);
+        $redisMock->method('setnx')->willReturn(false);
+
+        $redisLocker = new RedisLocker($redisMock);
+        $this->assertFalse(
+            $redisLocker->lock('test', true),
             'RedisLocker::lock fail test failed!'
         );
     }
@@ -152,9 +154,19 @@ class RedisLockerTest extends TestCase
 
     public function testUnlockException2()
     {
-        $this->redisLocker->setLockedJob('test1', 'value');
+        PHPUnitUtil::callMethod($this->redisLocker, 'setLockedJob', ['test1', 'value']);
         $this->expectException('\RuntimeException');
         $this->redisLocker->unlock('test');
+    }
+
+    public function testUnlockException3()
+    {
+        $redisMock = $this->setRedisMock();
+        $redisMock->method('eval')->willReturn(false);
+        $redisLocker = new RedisLocker($redisMock);
+        PHPUnitUtil::callMethod($redisLocker, 'setLockedJob', ['test', 'value']);
+        $this->expectException('\RuntimeException');
+        $redisLocker->unlock('test');
     }
 
     public function testUnlockSuccess()
@@ -162,14 +174,46 @@ class RedisLockerTest extends TestCase
         $redisMock = $this->setRedisMock();
         $redisMock->method('eval')->willReturn(true);
         $redisLocker = new RedisLocker($redisMock);
-        $redisLocker->setLockedJob('test', 'value');
+        PHPUnitUtil::callMethod($redisLocker, 'setLockedJob', ['test', 'value']);
         $this->assertTrue(
             $redisLocker->unlock('test'),
             'RedisLocker::unlock success test failed!'
         );
-        $this->assertNull(
-            $redisLocker->getLockedJob('test')['id'],
-            'RedisLocker::unlock success test failed!'
+    }
+
+    public function testGetLockValue()
+    {
+        $redisMock = new MockRedis();
+        $redisLocker = new RedisLocker($redisMock);
+        $redisLocker->lock('test');
+        $this->assertEquals(
+            $redisMock->get('crondlocker-' . md5('test')),
+            $redisLocker->getLockValue('test'),
+            'RedisLocker::getLockValue failed!'
+        );
+    }
+
+    public function testInvalidJobId()
+    {
+        $redisMock = new MockRedis();
+        $redisLocker = new RedisLocker($redisMock);
+
+        $this->expectException('\InvalidArgumentException');
+        $redisLocker->getLockValue('');
+    }
+
+    public function testParseLockValue()
+    {
+        $redisMock = new MockRedis();
+        $redisLocker = new RedisLocker($redisMock);
+        $this->assertEquals(
+            [
+                'hostname' => '1',
+                'pid' => '2',
+                'time' => '3',
+            ],
+            $redisLocker->parseLockValue('test', '1;2;3;test'),
+            'RedisLocker::parseLockValue failed!'
         );
     }
 
