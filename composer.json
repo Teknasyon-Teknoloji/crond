@@ -13,7 +13,7 @@
     }
   ],
   "require": {
-    "php": ">=7.0",
+    "php": ">=7.1",
     "mtdowling/cron-expression": "1.2.*@stable",
     "psr/log":"1.0.*@stable"
   },
