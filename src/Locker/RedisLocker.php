@@ -12,11 +12,7 @@ class RedisLocker extends BaseLocker
     public function __construct($redisClient)
     {
         parent::__construct();
-
         $this->redis = $redisClient;
-        if ($this->redis->isConnected() === false) {
-            throw new \RuntimeException('Redis Client not connected!');
-        }
     }
 
     public function getLockerInfo()
