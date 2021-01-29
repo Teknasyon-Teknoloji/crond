@@ -14,7 +14,7 @@
   ],
   "require": {
     "php": ">=7.1",
-    "ex-json": "*",
+    "ext-json": "*",
     "mtdowling/cron-expression": "1.2.*@stable",
     "psr/log":"1.0.*@stable"
   },
