@@ -176,8 +176,8 @@ class Daemon
         $locked = $this->locker->lock($lockId);
         if ($locked === false) {
             throw new \RuntimeException(
-                'Cron #' . $cronId . ' lock failed! LockId: ' . $lockId
-                . ($this->isDeadLock($lockId) ? " ( Deadlock found! ) " : "")
+                'Cron #' . $cronId . ' lock failed! jobName: ' . $lockId
+                . ($this->isDeadLock($lockId) ? " ( Deadlock found! ) LockId: " . $this->locker->getJobUniqId($lockId) : "")
             );
         }
         @exec($this->lastRunnedCronJob->getCmd(), $output, $retval);
