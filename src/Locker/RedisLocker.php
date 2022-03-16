@@ -61,10 +61,10 @@ class RedisLocker extends BaseLocker
                 $this->resetLockedJob($job);
                 return true;
             } else {
-                throw new \RuntimeException('Job not locked by me!');
+                throw new \RuntimeException('Job not locked by me! Job not found!');
             }
         } else {
-            throw new \RuntimeException('Job not locked by me!');
+            throw new \RuntimeException('Job not locked by me! Job not valid!');
         }
     }
 

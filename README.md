@@ -2,9 +2,9 @@
 Distributed Cron Daemon with PHP
 
 ## Requirements
-* PHP 7.0+
+* PHP 8.0+
 * aws/aws-sdk-php
-* mtdowling/cron-expression
+* dragonmantank/cron-expression
 * psr/log
 
 ## Usage

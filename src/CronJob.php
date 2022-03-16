@@ -17,12 +17,12 @@ class CronJob
             throw new \InvalidArgumentException('Cronjob id required!');
         }
 
-        if (CronExpression::isValidExpression($expression)===false) {
-            throw new \InvalidArgumentException('Cronjob expression is not valid!');
+        if (CronExpression::isValidExpression($expression) === false) {
+            throw new \InvalidArgumentException('Cronjob expression "' . $expression . '" is not valid!');
         }
-        $this->id             = $id;
-        $this->expression     = $expression;
-        $this->cmd            = $cmd;
+        $this->id = $id;
+        $this->expression = $expression;
+        $this->cmd = $cmd;
         $this->isLockRequired = $isLockRequired;
     }
 
@@ -62,8 +62,8 @@ class CronJob
     {
         return 'CronJob'
             . ' #' . $this->id
-            . ($this->isLockRequired?(' with lock-activated'):'')
-            . ' ( '. $this->expression.' '. $this->cmd.' )';
+            . ($this->isLockRequired ? (' with lock-activated') : '')
+            . ' ( ' . $this->expression . ' ' . $this->cmd . ' )';
     }
 
 }

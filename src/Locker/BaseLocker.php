@@ -48,7 +48,7 @@ abstract class BaseLocker implements Locker
 
     protected function getLockedJob($job)
     {
-        return isset($this->lockedJob[md5($job)]) ? $this->lockedJob[md5($job)] : null;
+        return $this->lockedJob[md5($job)] ?? null;
     }
 
     protected function setLockedJob($job, $value)

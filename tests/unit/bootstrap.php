@@ -60,7 +60,7 @@ namespace CrondUnitTest {
             return true;
         }
 
-        public function sAdd($key, $value1, $value2 = null, $valueN = null)
+        public function sAdd($key, ...$value1)
         {
             if (!isset($this->setList[$key])) {
                 $this->setList[$key] = [];
@@ -94,13 +94,13 @@ namespace CrondUnitTest {
             return isset($this->setList[$key]) ? $this->setList[$key] : [];
         }
 
-        public function del($key1, $key2 = null, $key3 = null)
+        public function del($key1, ...$otherKeys)
         {
             unset($this->setList[$key1]);
             return true;
         }
 
-        public function sRem($key, $member1, $member2 = null, $memberN = null)
+        public function sRem($key, ...$member1)
         {
             $arry = $this->setList[$key];
             $this->setList[$key] = array_diff($arry, [$member1]);
@@ -127,47 +127,47 @@ namespace CrondUnitTest {
             'warning' => [],
         ];
 
-        public function alert($message, array $context = array())
+        public function alert($message, array $context = array()): void
         {
             $this->logLines['alert'][] = $message;
         }
 
-        public function critical($message, array $context = array())
+        public function critical($message, array $context = array()): void
         {
             $this->logLines['critical'][] = $message;
         }
 
-        public function debug($message, array $context = array())
+        public function debug($message, array $context = array()): void
         {
             $this->logLines['debug'][] = $message;
         }
 
-        public function emergency($message, array $context = array())
+        public function emergency($message, array $context = array()): void
         {
             $this->logLines['emergency'][] = $message;
         }
 
-        public function error($message, array $context = array())
+        public function error($message, array $context = array()): void
         {
             $this->logLines['error'][] = $message;
         }
 
-        public function info($message, array $context = array())
+        public function info($message, array $context = array()): void
         {
             $this->logLines['info'][] = $message;
         }
 
-        public function log($level, $message, array $context = array())
+        public function log($level, $message, array $context = array()): void
         {
             $this->logLines['log'][] = $message;
         }
 
-        public function notice($message, array $context = array())
+        public function notice($message, array $context = array()): void
         {
             $this->logLines['notice'][] = $message;
         }
 
-        public function warning($message, array $context = array())
+        public function warning($message, array $context = array()): void
         {
             $this->logLines['warning'][] = $message;
         }
@@ -194,10 +194,12 @@ namespace Teknasyon\Crond {
     {
         return 'crond.localhost';
     }
+
     function getmypid()
     {
         return '1';
     }
+
     function php_sapi_name()
     {
         return 'cli';

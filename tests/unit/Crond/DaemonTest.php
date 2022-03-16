@@ -7,7 +7,7 @@ use Teknasyon\Crond\Locker\RedisLocker;
 class DaemonTest extends TestCase
 {
     /**
-     * @return PHPUnit_Framework_MockObject_MockObject
+     * @return \PHPUnit\Framework\MockObject\MockObject
      */
     private function setRedisMock()
     {
@@ -201,7 +201,7 @@ class DaemonTest extends TestCase
         $_SERVER['argv'] = ['--list-crons'];
         $daemon->start();
         $this->expectOutputString(
-             'Cron Jobs : ' . PHP_EOL
+            'Cron Jobs : ' . PHP_EOL
             . 'Cron #test : ' . PHP_EOL
             . '0 * * * * date (LOCK REQUIRED)' . PHP_EOL
         );
@@ -215,7 +215,7 @@ class DaemonTest extends TestCase
 
         $_SERVER['argv'] = [];
         $daemon = new Daemon(
-            ['test' => ['cmd' => 'date', 'expression' => (date('i') + 2) . ' * * * *']],
+            ['test' => ['cmd' => 'date', 'expression' => (intval(date('i')) + 2) . ' * * * *']],
             $locker
         );
         $daemon->setLogger($logger);
@@ -224,7 +224,7 @@ class DaemonTest extends TestCase
 
         $this->assertEquals('Crond started', $logger->logLines['info'][0], 'Crond log line failed');
 
-     }
+    }
 
     public function testCrondDue()
     {
@@ -341,7 +341,7 @@ class DaemonTest extends TestCase
         $daemon->setLogger($logger);
 
         $this->expectException('\RuntimeException');
-        $this->expectExceptionMessage('Cron #deadlockjob lock failed! LockId: deadlockjob ( Deadlock found! )');
+        $this->expectExceptionMessage('Cron #deadlockjob lock failed! jobName: deadlockjob ( Deadlock found! ) LockId: ' . $lockKey);
         $daemon->start();
     }
 

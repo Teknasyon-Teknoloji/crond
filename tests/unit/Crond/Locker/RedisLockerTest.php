@@ -13,7 +13,7 @@ class RedisLockerTest extends TestCase
     private $redisLocker;
 
     /**
-     * @return PHPUnit_Framework_MockObject_MockObject
+     * @return \PHPUnit\Framework\MockObject\MockObject
      */
     private function setRedisMock()
     {
@@ -25,19 +25,11 @@ class RedisLockerTest extends TestCase
         return $redisMock;
     }
 
-    public function setUp()
+    public function setUp(): void
     {
         $redisMock = $this->setRedisMock();
         $redisMock->method('isConnected')->willReturn(true);
         $this->redisLocker = new RedisLocker($redisMock);
-    }
-
-    public function testConstructionException()
-    {
-        $this->expectException('\RuntimeException');
-        $redisMock = $this->setRedisMock();
-        $redisMock->method('isConnected')->willReturn(false);
-        new RedisLocker($redisMock);
     }
 
     public function testSetJobUniqIdFunctionException()
@@ -60,7 +52,7 @@ class RedisLockerTest extends TestCase
     public function testGetLockerInfo()
     {
         $this->assertEquals(
-            'Redis ( local:123 -> 1 )',
+            'RedisLocker',
             $this->redisLocker->getLockerInfo(),
             'RedisLocker::getLockerInfo failed!'
         );
@@ -172,7 +164,7 @@ class RedisLockerTest extends TestCase
     public function testUnlockSuccess()
     {
         $redisMock = $this->setRedisMock();
-        $redisMock->method('eval')->willReturn(true);
+        $redisMock->method('get')->willReturn('value');
         $redisLocker = new RedisLocker($redisMock);
         PHPUnitUtil::callMethod($redisLocker, 'setLockedJob', ['test', 'value']);
         $this->assertTrue(

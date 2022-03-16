@@ -31,7 +31,7 @@ class Daemon
     {
         $this->uniqId = md5(gethostname());
         foreach ($cronConfigList as $cronId => $cronConfig) {
-            if (preg_match('/[^a-zA-Z0-9_\-\.]/', $cronId)) {
+            if (preg_match('/[^a-zA-Z0-9_\-.]/', $cronId)) {
                 throw new \InvalidArgumentException(
                     'CronId #' . $cronId . ' is invalid! Use only "a-z","A-z","0-9","-","_" and "."'
                 );
@@ -40,7 +40,7 @@ class Daemon
                 $cronId,
                 $cronConfig['expression'],
                 $cronConfig['cmd'],
-                (isset($cronConfig['lock']) && $cronConfig['lock'] == false) ? false : true
+                !((isset($cronConfig['lock']) && $cronConfig['lock'] == false))
             );
         }
         $this->locker = $locker;
@@ -58,15 +58,13 @@ class Daemon
 
     protected function log($type, $message)
     {
-        if ($this->logger) {
-            $this->logger->{$type}($message);
-        }
+        $this->logger?->{$type}($message);
     }
 
     public function isDaemon()
     {
         return php_sapi_name() == 'cli'
-            && strpos(trim(implode(' ', $_SERVER['argv'])), ' --' . $this->cronArgName . '=') === false;
+            && !str_contains(trim(implode(' ', $_SERVER['argv'])), ' --' . $this->cronArgName . '=');
     }
 
     public function getRunCmd($cronId)
@@ -88,7 +86,8 @@ class Daemon
     {
         $this->log('info', 'Crond started');
         foreach ($this->cronList as $cronJob) {
-            if (CronExpression::factory($cronJob->getExpression())->isDue() === false) {
+            $cronExpression = new CronExpression($cronJob->getExpression());
+            if ($cronExpression->isDue() === false) {
                 continue;
             }
             unset($output);
@@ -106,7 +105,7 @@ class Daemon
     {
         $cronId = null;
         foreach ($_SERVER['argv'] as $arg) {
-            if (strpos(trim($arg), '--' . $this->cronArgName . '=') === 0) {
+            if (str_starts_with(trim($arg), '--' . $this->cronArgName . '=')) {
                 $cronId = explode('--' . $this->cronArgName . '=', $arg);
                 $cronId = trim($cronId[1]);
                 break;
@@ -148,7 +147,7 @@ class Daemon
             return false;
         }
         $cmdOfPid = @exec('ps -p ' . $parsedJobValue['pid'] . ' -o cmd=');
-        if (!$cmdOfPid || strpos(trim($cmdOfPid), ' --' . $this->cronArgName . '=' . $cronId) === false) {
+        if (!$cmdOfPid || !str_contains(trim($cmdOfPid), ' --' . $this->cronArgName . '=' . $cronId)) {
             $childProcessCheck = @exec(
                 'ps -e -o cmd= | grep "' . $this->lastRunnedCronJob->getCmd() . '" | grep -v grep | wc -l'
             );

@@ -26,21 +26,22 @@ class CronJobTest extends TestCase
     public function testInvalidExpressionException()
     {
         $this->expectException('\InvalidArgumentException');
-        $this->expectExceptionMessage('Cronjob expression is not valid!');
+        $this->expectExceptionMessage('Cronjob expression "* * " is not valid!');
         new CronJob('test', '* * ', '');
     }
 
     public function testInvalidExpressionException2()
     {
         $this->expectException('\InvalidArgumentException');
-        $this->expectExceptionMessage('Cronjob expression is not valid!');
-        new CronJob('test', null, '');
+        //$this->expectException('\TypeError');
+        $this->expectExceptionMessage('Cronjob expression "" is not valid!');
+        new CronJob('test', '', '');
     }
 
     public function testInvalidExpressionException3()
     {
         $this->expectException('\InvalidArgumentException');
-        $this->expectExceptionMessage('Cronjob expression is not valid!');
+        $this->expectExceptionMessage('Cronjob expression "*/10 * * * * * *" is not valid!');
         new CronJob('test', '*/10 * * * * * *', '');
     }
 
@@ -83,9 +84,9 @@ class CronJobTest extends TestCase
             'CronJob::__toString failed!'
         );
 
-        $cronJob = new CronJob('test2', '0/10 * * * *', 'date -f Ymd', false);
+        $cronJob = new CronJob('test2', '0 * * * *', 'date -f Ymd', false);
         $this->assertEquals(
-            'CronJob #test2 ( 0/10 * * * * date -f Ymd )',
+            'CronJob #test2 ( 0 * * * * date -f Ymd )',
             '' . $cronJob,
             'CronJob::__toString failed!'
         );
