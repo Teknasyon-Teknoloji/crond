@@ -16,7 +16,7 @@
     "php": ">=8.0",
     "ext-json": "*",
     "dragonmantank/cron-expression": "3.3.*",
-    "psr/log":"3.0.*"
+    "psr/log": "^2.0 || ^3.0"
   },
   "require-dev": {
     "phpunit/phpunit": "9.5.*"
