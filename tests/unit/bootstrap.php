@@ -31,21 +31,21 @@ namespace CrondUnitTest {
 
         }
 
-        public function isConnected()
+        public function isConnected(): bool
         {
             return true;
         }
 
-        public function set($key, $value, $expiration = 0)
+        public function set($key, $value, $options = 0): bool|string|\Redis
         {
-            if (is_array($expiration) && in_array('nx', $expiration) && isset($this->setList[$key])) {
+            if (is_array($options) && in_array('nx', $options) && isset($this->setList[$key])) {
                 return false;
             }
             $this->setList[$key] = $value;
             return true;
         }
 
-        public function setnx($key, $value, $expiration = 0)
+        public function setnx($key, $value, $expiration = 0): bool|\Redis
         {
             if (isset($this->setList[$key])) {
                 return false;
@@ -60,7 +60,7 @@ namespace CrondUnitTest {
             return true;
         }
 
-        public function sAdd($key, ...$value1)
+        public function sAdd($key, ...$value1): false|int|\Redis
         {
             if (!isset($this->setList[$key])) {
                 $this->setList[$key] = [];
@@ -69,7 +69,7 @@ namespace CrondUnitTest {
             return true;
         }
 
-        public function get($key, callable $cache_cb = null, $flags = 0)
+        public function get($key, callable $cache_cb = null, $flags = 0): mixed
         {
             return isset($this->setList[$key]) ? $this->setList[$key] : null;
         }
@@ -89,25 +89,25 @@ namespace CrondUnitTest {
             return [['host' => 'localhost', 'port' => '1', 'weight' => 10]];
         }
 
-        public function sMembers($key)
+        public function sMembers($key): false|array|\Redis
         {
             return isset($this->setList[$key]) ? $this->setList[$key] : [];
         }
 
-        public function del($key1, ...$otherKeys)
+        public function del(array|string $key, string ...$other_keys): false|int|\Redis
         {
-            unset($this->setList[$key1]);
+            unset($this->setList[$key]);
             return true;
         }
 
-        public function sRem($key, ...$member1)
+        public function sRem($key, ...$member1): false|int|\Redis
         {
             $arry = $this->setList[$key];
             $this->setList[$key] = array_diff($arry, [$member1]);
             return true;
         }
 
-        public function eval($script, $args = array(), $numKeys = 0)
+        public function eval($script, $args = array(), $num_keys = 0): mixed
         {
             return true;
         }
