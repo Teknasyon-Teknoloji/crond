@@ -137,7 +137,7 @@ class Daemon
         $parsedJobValue = $this->locker->parseLockValue($cronId, $lockedJobValue);
         if (!$parsedJobValue['hostname'] || !$parsedJobValue['pid']) {
             throw new \RuntimeException(
-                'Cron #' . $cronId . ' lock value not valid!'
+                'Cron #' . $cronId . ' lock value not valid! ' . $lockedJobValue
             );
         }
         if ($parsedJobValue['hostname'] != gethostname()) {
@@ -175,8 +175,9 @@ class Daemon
         $locked = $this->locker->lock($lockId);
         if ($locked === false) {
             throw new \RuntimeException(
-                'Cron #' . $cronId . ' lock failed! jobName: ' . $lockId
-                . ($this->isDeadLock($lockId) ? " ( Deadlock found! ) LockId: " . $this->locker->getJobUniqId($lockId) : "")
+                'Cron #' . $cronId . ' lock failed! jobName: ' . $lockId . ', lockId: ' .
+                $this->locker->getJobUniqId($lockId) . ', lockValue: ' . $this->locker->getLockValue($cronId)
+                . ($this->isDeadLock($lockId) ? " ( Deadlock found! )" : "")
             );
         }
         @exec($this->lastRunnedCronJob->getCmd(), $output, $retval);
