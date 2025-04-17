@@ -92,7 +92,8 @@ class Daemon
             }
             unset($output);
             unset($retVal);
-            @exec($this->getRunCmd($cronJob->getId()) . ' &> /dev/null &', $output, $retVal);
+            //@exec($this->getRunCmd($cronJob->getId()) . ' &> /dev/null &', $output, $retVal);
+            @exec($this->getRunCmd($cronJob->getId()) . ' > /dev/null 2>&1 &', $output, $retVal);
             if ($retVal !== 0) {
                 $this->log('error', $cronJob . ' failed!');
             } else {
