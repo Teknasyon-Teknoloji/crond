@@ -27,8 +27,16 @@ class Daemon
      */
     private $lastRunnedCronJob;
 
-    public function __construct(array $cronConfigList, Locker $locker)
+    private $outputFile;
+
+    /**
+     * @param array $cronConfigList
+     * @param Locker $locker
+     * @param $outputFile
+     */
+    public function __construct(array $cronConfigList, Locker $locker, $outputFile = '/dev/null')
     {
+        $this->outputFile = $outputFile;
         $this->uniqId = md5(gethostname());
         foreach ($cronConfigList as $cronId => $cronConfig) {
             if (preg_match('/[^a-zA-Z0-9_\-.]/', $cronId)) {
@@ -92,8 +100,8 @@ class Daemon
             }
             unset($output);
             unset($retVal);
-            //@exec($this->getRunCmd($cronJob->getId()) . ' &> /dev/null &', $output, $retVal);
-            @exec($this->getRunCmd($cronJob->getId()) . ' > /dev/null 2>&1 &', $output, $retVal);
+            //@exec($this->getRunCmd($cronJob->getId()) . ' &> ' . $this->outputFile . ' &', $output, $retVal);
+            @exec($this->getRunCmd($cronJob->getId()) . ' > ' . $this->outputFile . ' 2>&1 &', $output, $retVal);
             if ($retVal !== 0) {
                 $this->log('error', $cronJob . ' failed!');
             } else {
