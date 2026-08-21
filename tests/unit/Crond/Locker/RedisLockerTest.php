@@ -13,11 +13,11 @@ class RedisLockerTest extends TestCase
     private $redisLocker;
 
     /**
-     * @return \PHPUnit\Framework\MockObject\MockObject
+     * @return \PHPUnit\Framework\MockObject\Stub
      */
     private function setRedisMock()
     {
-        $redisMock = $this->createMock('\Redis');
+        $redisMock = $this->createStub('\Redis');
         $redisMock->method('getHost')->willReturn('local');
         $redisMock->method('getPort')->willReturn(123);
         $redisMock->method('getDbNum')->willReturn(1);

@@ -69,7 +69,7 @@ namespace CrondUnitTest {
             return true;
         }
 
-        public function get($key, callable $cache_cb = null, $flags = 0): mixed
+        public function get($key, ?callable $cache_cb = null, $flags = 0): mixed
         {
             return isset($this->setList[$key]) ? $this->setList[$key] : null;
         }

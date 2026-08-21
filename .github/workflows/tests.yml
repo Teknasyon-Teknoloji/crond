@@ -20,7 +20,7 @@ jobs:
         with:
           php-version: ${{ matrix.php }}
           extensions: json, redis
-          coverage: none
+          coverage: pcov
 
       - name: Install dependencies
         run: composer update --no-interaction --prefer-dist
