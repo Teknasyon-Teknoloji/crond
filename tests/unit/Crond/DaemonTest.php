@@ -215,7 +215,7 @@ class DaemonTest extends TestCase
 
         $_SERVER['argv'] = [];
         $daemon = new Daemon(
-            ['test' => ['cmd' => 'date', 'expression' => (intval(date('i')) + 2) . ' * * * *']],
+            ['test' => ['cmd' => 'date', 'expression' => ((intval(date('i')) + 2) % 60) . ' * * * *']],
             $locker
         );
         $daemon->setLogger($logger);
@@ -341,7 +341,10 @@ class DaemonTest extends TestCase
         $daemon->setLogger($logger);
 
         $this->expectException('\RuntimeException');
-        $this->expectExceptionMessage('Cron #deadlockjob lock failed! jobName: deadlockjob ( Deadlock found! ) LockId: ' . $lockKey);
+        $this->expectExceptionMessageMatches(
+            '/^Cron #deadlockjob lock failed! jobName: deadlockjob, lockId: ' . preg_quote($lockKey, '/')
+            . ', lockValue: .+ \( Deadlock found! \)$/'
+        );
         $daemon->start();
     }
 
