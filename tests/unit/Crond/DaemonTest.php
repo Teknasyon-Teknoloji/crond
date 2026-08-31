@@ -47,11 +47,15 @@ class DaemonTest extends ArgvIsolatedTestCase
         );
     }
 
+    /**
+     * A config written as a plain list yields integer keys, and 0 is as falsy an id as '' is. (This used to pass
+     * null, which PHP silently folds to '' — the same case as testInValidCronJobId2, and deprecated since 8.5.)
+     */
     public function testInValidCronJobId3()
     {
         $this->expectException('\InvalidArgumentException');
         $daemon = new Daemon(
-            [null => ['cmd' => 'date', 'expression' => '0 * * * *']],
+            [0 => ['cmd' => 'date', 'expression' => '0 * * * *']],
             new RedisLocker($this->setRedisMock())
         );
     }

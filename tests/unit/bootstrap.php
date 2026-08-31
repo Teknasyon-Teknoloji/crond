@@ -17,7 +17,7 @@ namespace CrondUnitTest {
         {
             $class = new \ReflectionClass($obj);
             $method = $class->getMethod($name);
-            $method->setAccessible(true);
+            // No setAccessible() call: it has had no effect since PHP 8.1 and is deprecated as of 8.5.
             return $method->invokeArgs($obj, $args);
         }
     }
