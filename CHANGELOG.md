@@ -44,6 +44,11 @@ from leaking locks itself.
 
 ### Changed
 
+- **The PHP floor is back to 8.1** (was 8.2). No source change was needed — the library never used an 8.2-only
+  feature; only the `dragonmantank/cron-expression` pin did. That constraint is now `^3.5` instead of `3.6.*`:
+  8.2+ still resolves to 3.6.x, while 8.1 resolves to 3.5.0, whose `CronExpression` API and DST behaviour the
+  suite exercises identically. PHP 8.1 is past upstream security support — the support is for consumers pinned
+  to it, not a recommendation. CI now runs 8.1 through 8.5, with the lowest-dependency job on 8.1.
 - **Spawning uses `proc_open`.** The daemon tick spawns runners from an argv array — no shell, no `&`, no
   escaping hazards, interpreter is `PHP_BINARY` instead of a hardcoded `php` (which a minimal cron `PATH` often
   cannot resolve — and the old backgrounded `exec` reported success anyway). After half a second the tick probes

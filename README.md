@@ -2,7 +2,7 @@
 Distributed Cron Daemon with PHP
 
 ## Requirements
-* PHP 8.2+
+* PHP 8.1+
 * ext-json
 * dragonmantank/cron-expression
 * psr/log
