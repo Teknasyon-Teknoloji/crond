@@ -111,6 +111,160 @@ namespace CrondUnitTest {
         {
             return true;
         }
+
+        /** @var array<string,int> key => last ttl set via expire() */
+        public array $expireCalls = [];
+
+        public function expire($key, $ttl, $mode = null): \Redis|bool
+        {
+            $this->expireCalls[$key] = $ttl;
+            return true;
+        }
+    }
+
+    /**
+     * Base for tests that touch the daemon.
+     *
+     * Daemon reads $_SERVER['argv'] as input — isDaemon() and getCronIdArg() are driven entirely by it — so a test
+     * that sets it and walks away decides what every later test class sees. That is not hypothetical: leaving a
+     * --run-uniq-cron argument behind makes isDaemon() answer false for everyone after it.
+     *
+     * Extend this instead of TestCase and the hazard is handled once. Subclasses that define setUp()/tearDown()
+     * must call the parent.
+     */
+    abstract class ArgvIsolatedTestCase extends \PHPUnit\Framework\TestCase
+    {
+        /**
+         * @var array
+         */
+        private $originalArgv = [];
+
+        protected function setUp(): void
+        {
+            parent::setUp();
+            $this->originalArgv = $_SERVER['argv'];
+        }
+
+        protected function tearDown(): void
+        {
+            $_SERVER['argv'] = $this->originalArgv;
+            parent::tearDown();
+        }
+    }
+
+    /**
+     * Daemon with the spawn and clock seams overridden, so scheduler tests stay hermetic: nothing is really
+     * spawned and no real 50ms grace is waited. The real spawn path is covered by DaemonExecutionTest with
+     * genuine child processes.
+     */
+    class TestableDaemon extends \Teknasyon\Crond\Daemon
+    {
+        /** @var array<int, array> argv arrays handed to the spawner */
+        public $spawnCalls = [];
+
+        /** @var string 'ok' | 'fail-start' | 'exit-nonzero' */
+        public $spawnBehaviour = 'ok';
+
+        /** @var \DateTimeInterface|null fixed clock for isDue evaluation */
+        public $fixedNow = null;
+
+        protected function currentTime()
+        {
+            return $this->fixedNow !== null ? $this->fixedNow : parent::currentTime();
+        }
+
+        public function checkDue(\Teknasyon\Crond\CronJob $cronJob, $now)
+        {
+            return $this->isCronJobDue($cronJob, $now);
+        }
+
+        protected function spawnDetachedRunner(array $args, $outputFile)
+        {
+            $this->spawnCalls[] = $args;
+
+            if ($this->spawnBehaviour === 'fail-start') {
+                return false;
+            }
+
+            return fopen('php://memory', 'r');
+        }
+
+        protected function probeSpawn($handle)
+        {
+            if ($this->spawnBehaviour === 'exit-nonzero') {
+                return ['running' => false, 'exitcode' => 1, 'pid' => 4242];
+            }
+
+            return ['running' => true, 'exitcode' => -1, 'pid' => 4242];
+        }
+
+        protected function waitBeforeSpawnCheck()
+        {
+        }
+    }
+
+    class MockProcessProbe implements \Teknasyon\Crond\ProcessProbe
+    {
+        public $usable = true;
+        public $runningPids = [];
+        public $runningCommands = [];
+        public $calls = [];
+
+        public function isUsable()
+        {
+            $this->calls[] = 'isUsable';
+            return $this->usable;
+        }
+
+        public function isProcessRunning($pid, $argumentMarker)
+        {
+            $this->calls[] = 'isProcessRunning:' . $pid;
+            return isset($this->runningPids[$pid]) && strpos($this->runningPids[$pid], $argumentMarker) !== false;
+        }
+
+        public function isCommandRunning($cmd)
+        {
+            $this->calls[] = 'isCommandRunning:' . $cmd;
+            return in_array($cmd, $this->runningCommands, true);
+        }
+    }
+
+    /**
+     * A locker that knows nothing about hosts, i.e. every Locker implemented outside this package before 2.3.
+     */
+    class MockPlainLocker extends \Teknasyon\Crond\Locker\BaseLocker
+    {
+        public $store = [];
+
+        public function getLockerInfo()
+        {
+            return 'MockPlainLocker';
+        }
+
+        public function getLockValue($job)
+        {
+            return $this->store[$this->getJobUniqId($job)] ?? null;
+        }
+
+        public function lock($job)
+        {
+            if (isset($this->store[$this->getJobUniqId($job)])) {
+                return false;
+            }
+            $this->store[$this->getJobUniqId($job)] = $this->generateLockValue($job);
+            return true;
+        }
+
+        public function unlock($job)
+        {
+            unset($this->store[$this->getJobUniqId($job)]);
+            return true;
+        }
+
+        public function disconnect()
+        {
+            return true;
+        }
     }
 
     class MockLogger implements LoggerInterface
@@ -205,21 +359,39 @@ namespace Teknasyon\Crond {
         return 'cli';
     }
 
+    /**
+     * Stands in for the process table as well as for command execution.
+     *
+     * The overridden getmypid() answers '1', so pid 1 is this very process and must be visible: a probe that
+     * cannot see itself reports the table as unreadable, and then nothing can be proven dead. Any other pid is
+     * treated as gone, which is what the dead-lock scenarios rely on.
+     */
     function exec($cmd, &$output = '', &$retval = 0)
     {
         if ($cmd == 'fail-cmd' || strpos($cmd, 'fail.php')) {
             $output = 'cmd not found';
             $retval = 1;
             return '';
-        } elseif (strpos($cmd, 'ps -e') !== false && strpos($cmd, 'dead-lock-cmd') !== false) {
-            $output = '';
+        }
+
+        if (strpos($cmd, 'ps -e -o pid=,args=') !== false) {
+            $output = ['    1 php crond.php --run-uniq-cron=selftest'];
             $retval = 0;
-            return 0;
-        } else {
-            $output = '';
-            $retval = 0;
+            return $output[0];
+        }
+
+        if (strpos($cmd, 'ps -p ') !== false) {
+            if (strpos($cmd, "ps -p '1'") !== false) {
+                $retval = 0;
+                return 'php crond.php --run-uniq-cron=selftest';
+            }
+            $retval = 1;
             return '';
         }
+
+        $output = '';
+        $retval = 0;
+        return '';
     }
 
 }

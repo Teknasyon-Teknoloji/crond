@@ -22,11 +22,39 @@ jobs:
           extensions: json, redis
           coverage: pcov
 
+      - name: Validate composer.json
+        run: composer validate --strict --no-check-lock
+
       - name: Install dependencies
         run: composer update --no-interaction --prefer-dist
 
       - name: Show resolved PHPUnit version
         run: vendor/bin/phpunit --version
+
+      - name: Run tests
+        run: vendor/bin/phpunit -c tests/unit/phpunit.xml
+
+      # Daemon reads $_SERVER['argv'] as input, so a test that sets it and does not restore it changes what later
+      # tests see. That stayed invisible until a new test class happened to run first; shuffling catches it directly.
+      - name: Run tests in a shuffled order
+        run: vendor/bin/phpunit -c tests/unit/phpunit.xml --order-by=random
+
+  lowest-deps:
+    runs-on: ubuntu-latest
+    name: PHP 8.2, lowest dependencies
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: json, redis
+          coverage: pcov
+
+      # psr/log and phpunit allow several majors; without this job only the highest resolution is ever exercised.
+      - name: Install lowest dependencies
+        run: composer update --no-interaction --prefer-dist --prefer-lowest
 
       - name: Run tests
         run: vendor/bin/phpunit -c tests/unit/phpunit.xml
