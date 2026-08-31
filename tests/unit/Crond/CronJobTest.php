@@ -75,6 +75,28 @@ class CronJobTest extends TestCase
         $this->assertFalse($cronJob->isLockRequired(), 'CronJob::isLockRequired failed!');
     }
 
+    public function testEmptyCmdIsRejected()
+    {
+        // An empty cmd runs as `sh -c ''`: exit 0, nothing done — after the lock was taken.
+        $this->expectException('\InvalidArgumentException');
+        $this->expectExceptionMessage('Cronjob cmd required!');
+        new CronJob('test', '* * * * *', '');
+    }
+
+    public function testTimeoutAndOutputFileDefaultsAndValues()
+    {
+        $cronJob = new CronJob('test', '0 * * * *', 'date');
+        $this->assertSame(0, $cronJob->getTimeout(), 'Timeout defaults to unlimited');
+        $this->assertNull($cronJob->getOutputFile(), 'Output file defaults to the daemon-wide one');
+
+        $cronJob = new CronJob('test', '0 * * * *', 'date', true, 90, '/tmp/test.log');
+        $this->assertSame(90, $cronJob->getTimeout());
+        $this->assertSame('/tmp/test.log', $cronJob->getOutputFile());
+
+        $cronJob = new CronJob('test', '0 * * * *', 'date', true, -5);
+        $this->assertSame(0, $cronJob->getTimeout(), 'A negative timeout collapses to unlimited');
+    }
+
     public function testToString()
     {
         $cronJob = new CronJob('test', '0 * * * *', 'date');

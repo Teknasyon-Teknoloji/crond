@@ -151,14 +151,25 @@ class RedisLockerTest extends TestCase
         $this->redisLocker->unlock('test');
     }
 
-    public function testUnlockException3()
+    public function testUnlockReportsAVanishedKeyInsteadOfThrowing()
     {
+        // The key expired (lockTtl) or was recovered elsewhere: a benign condition, not an exception —
+        // throwing here used to mask the job's own result in the daemon.
         $redisMock = $this->setRedisMock();
-        $redisMock->method('eval')->willReturn(false);
+        $redisMock->method('get')->willReturn(false);
         $redisLocker = new RedisLocker($redisMock);
         PHPUnitUtil::callMethod($redisLocker, 'setLockedJob', ['test', 'value']);
-        $this->expectException('\RuntimeException');
-        $redisLocker->unlock('test');
+        $this->assertFalse($redisLocker->unlock('test'));
+    }
+
+    public function testUnlockLeavesSomebodyElsesLockAloneAndReportsIt()
+    {
+        $redisMock = $this->createMock('\Redis');
+        $redisMock->method('get')->willReturn('another-host;99;1;test');
+        $redisMock->expects($this->never())->method('del');
+        $redisLocker = new RedisLocker($redisMock);
+        PHPUnitUtil::callMethod($redisLocker, 'setLockedJob', ['test', 'value']);
+        $this->assertFalse($redisLocker->unlock('test'));
     }
 
     public function testUnlockSuccess()

@@ -6,6 +6,8 @@ abstract class BaseLocker implements Locker
 {
     protected $uniqIdFunction;
     protected $keyPrefix = 'crondlocker-';
+    protected $hostKeyPrefix = 'crondhost-';
+    protected $recoveryKeyPrefix = 'crondrecovery-';
     protected $lockedJob = [];
 
     public function __construct()
@@ -30,34 +32,83 @@ abstract class BaseLocker implements Locker
         return $this->keyPrefix . $func($job);
     }
 
+    /**
+     * @param string $hostname
+     * @return string
+     */
+    public function getHostUniqId($hostname)
+    {
+        $hostname = substr(trim((string) $hostname), 0, 253);
+
+        if ($hostname === '') {
+            throw new \InvalidArgumentException('Locker::getHostUniqId hostname param not valid!');
+        }
+
+        return $this->hostKeyPrefix . $hostname;
+    }
+
+    /**
+     * @param string $job
+     * @return string
+     */
+    public function getRecoveryUniqId($job)
+    {
+        if (!$job) {
+            throw new \InvalidArgumentException('Locker::getRecoveryUniqId job param not valid!');
+        }
+        $func = $this->uniqIdFunction;
+        return $this->recoveryKeyPrefix . $func($job);
+    }
+
     protected function generateLockValue($job)
     {
         return gethostname() . ';' . getmypid() . ';' . microtime(true) . ';' . $job;
     }
 
+    /**
+     * Splits a lock value into its parts.
+     *
+     * Returns nulls rather than raising warnings when the value does not belong to this job: strpos() answers false
+     * for a foreign or corrupted value, and the previous substr($value, 0, false) turned that into an empty string
+     * whose explode() left undefined offsets behind.
+     */
     public function parseLockValue($job, $value)
     {
-        $parsedValue = substr($value, 0, strpos($value, ';' . $job));
-        list($hostname, $pid, $time) = explode(';', $parsedValue, 3);
+        $position = strpos((string) $value, ';' . $job);
+
+        if ($position === false) {
+            return [
+                'hostname' => null,
+                'pid' => null,
+                'time' => null,
+            ];
+        }
+
+        $parts = explode(';', substr((string) $value, 0, $position), 3);
+
         return [
-            'hostname' => $hostname,
-            'pid' => $pid,
-            'time' => $time,
+            'hostname' => isset($parts[0]) ? $parts[0] : null,
+            'pid' => isset($parts[1]) ? $parts[1] : null,
+            'time' => isset($parts[2]) ? $parts[2] : null,
         ];
     }
 
+    /**
+     * The in-process map is keyed by the very same derivation as the storage key. Keying it differently (the old
+     * md5($job) vs md5(strtolower($job))) made lock('MyJob') + unlock('myjob') throw and leak the Redis key.
+     */
     protected function getLockedJob($job)
     {
-        return $this->lockedJob[md5($job)] ?? null;
+        return $this->lockedJob[$this->getJobUniqId($job)] ?? null;
     }
 
     protected function setLockedJob($job, $value)
     {
-        $this->lockedJob[md5($job)] = ['id' => $this->getJobUniqId($job), 'value' => $value];
+        $this->lockedJob[$this->getJobUniqId($job)] = ['id' => $this->getJobUniqId($job), 'value' => $value];
     }
 
     protected function resetLockedJob($job)
     {
-        $this->lockedJob[md5($job)] = null;
+        unset($this->lockedJob[$this->getJobUniqId($job)]);
     }
 }

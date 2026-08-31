@@ -11,7 +11,17 @@ class CronJob
     private $cmd;
     private $isLockRequired = false;
 
-    public function __construct($id, $expression, $cmd, $isLockRequired = true)
+    /**
+     * @var int seconds the job may run before it is terminated; 0 means no limit
+     */
+    private $timeout = 0;
+
+    /**
+     * @var string|null per-job output file; null falls back to the daemon-wide one
+     */
+    private $outputFile;
+
+    public function __construct($id, $expression, $cmd, $isLockRequired = true, $timeout = 0, $outputFile = null)
     {
         if (!$id) {
             throw new \InvalidArgumentException('Cronjob id required!');
@@ -20,10 +30,18 @@ class CronJob
         if (CronExpression::isValidExpression($expression) === false) {
             throw new \InvalidArgumentException('Cronjob expression "' . $expression . '" is not valid!');
         }
+
+        if (!is_string($cmd) || trim($cmd) === '') {
+            // An empty cmd runs as `sh -c ''`, which exits 0 without doing anything — after taking the lock.
+            throw new \InvalidArgumentException('Cronjob cmd required!');
+        }
+
         $this->id = $id;
         $this->expression = $expression;
         $this->cmd = $cmd;
         $this->isLockRequired = $isLockRequired;
+        $this->timeout = max(0, (int) $timeout);
+        $this->outputFile = (is_string($outputFile) && $outputFile !== '') ? $outputFile : null;
     }
 
     /**
@@ -58,6 +76,22 @@ class CronJob
         return $this->isLockRequired;
     }
 
+    /**
+     * @return int seconds; 0 means no limit
+     */
+    public function getTimeout()
+    {
+        return $this->timeout;
+    }
+
+    /**
+     * @return string|null
+     */
+    public function getOutputFile()
+    {
+        return $this->outputFile;
+    }
+
     public function __toString()
     {
         return 'CronJob'
@@ -65,5 +99,4 @@ class CronJob
             . ($this->isLockRequired ? (' with lock-activated') : '')
             . ' ( ' . $this->expression . ' ' . $this->cmd . ' )';
     }
-
 }

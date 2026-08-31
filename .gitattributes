@@ -1,0 +1,7 @@
+# Keep consumer vendor/ directories lean: none of this is needed at runtime.
+/tests export-ignore
+/.github export-ignore
+/.gitattributes export-ignore
+/.gitignore export-ignore
+/log export-ignore
+/.idea export-ignore

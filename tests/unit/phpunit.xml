@@ -1,16 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" bootstrap="./bootstrap.php" colors="true" stopOnFailure="true" xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.5/phpunit.xsd" cacheDirectory=".phpunit.cache">
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" bootstrap="./bootstrap.php" colors="true" stopOnFailure="false" failOnWarning="true" failOnDeprecation="true" failOnNotice="true" xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.5/phpunit.xsd" cacheDirectory=".phpunit.cache">
   <coverage>
     <report>
       <html outputDirectory="../../log/phpunit_report" lowUpperBound="35" highLowerBound="70"/>
     </report>
   </coverage>
-  <php>
-    <server name="HTTP_X_AMZ_SNS_MESSAGE_TYPE" value="SES"/>
-  </php>
   <testsuites>
     <testsuite name="Teknasyon Crond Test Suite">
-      <directory suffix="Test.php" phpVersion="7.0.0" phpVersionOperator="&gt;=">Crond/</directory>
+      <directory suffix="Test.php">Crond/</directory>
     </testsuite>
   </testsuites>
   <logging/>
