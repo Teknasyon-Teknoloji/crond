@@ -32,6 +32,8 @@ enum LockVerdict: string
     public const REASON_LOCK_VALUE_MISSING = 'lock_value_missing';
     public const REASON_LOCK_VALUE_INVALID = 'lock_value_invalid';
     public const REASON_PROCESS_PROBE_UNAVAILABLE = 'process_probe_unavailable';
+    /** The probe reads the table but not full command lines: it cannot even see this process's own marker. */
+    public const REASON_PROCESS_PROBE_BLIND = 'process_probe_blind';
     public const REASON_HOST_REGISTRY_COLD = 'host_registry_cold';
     public const REASON_HOST_REGISTRY_UNSUPPORTED = 'host_registry_unsupported';
 

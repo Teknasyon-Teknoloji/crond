@@ -374,16 +374,19 @@ namespace Teknasyon\Crond {
             return '';
         }
 
-        if (strpos($cmd, 'ps -e -o pid=,args=') !== false) {
-            $output = ['    1 php crond.php --run-uniq-cron=selftest'];
+        // Pid 1 answers with the real argv of the test, marker included, as a full-width ps would for the runner.
+        $ownLine = 'php ' . implode(' ', $_SERVER['argv']);
+
+        if (strpos($cmd, 'ps -ww -e -o pid=,args=') !== false) {
+            $output = ['    1 ' . $ownLine];
             $retval = 0;
             return $output[0];
         }
 
-        if (strpos($cmd, 'ps -p ') !== false) {
-            if (strpos($cmd, "ps -p '1'") !== false) {
+        if (strpos($cmd, 'ps -ww -p ') !== false) {
+            if (strpos($cmd, "ps -ww -p '1'") !== false) {
                 $retval = 0;
-                return 'php crond.php --run-uniq-cron=selftest';
+                return $ownLine;
             }
             $retval = 1;
             return '';

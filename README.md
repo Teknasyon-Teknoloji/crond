@@ -196,6 +196,11 @@ $crond->setProcessProbe(new MyProcessProbe()); // Teknasyon\Crond\ProcessProbe
 A probe that cannot read the process table must say so through `isUsable()`. "Nothing is running" and "I cannot
 see anything" must never look alike — the first one releases locks.
 
+The default probe runs `ps -ww`, because a `COLUMNS` variable in the environment makes procps-ng truncate even
+piped output. Independently of the probe in use, the daemon checks that the probe can see the running process's
+own `--run-uniq-cron=` marker before it concludes that a holder on the same host is gone; a probe that cannot is
+reported as `process_probe_blind` and never releases anything.
+
 ## Output files
 
 The daemon-wide `$outputFile` (constructor, default `/dev/null`) and the per-job `output` config key are opened in
