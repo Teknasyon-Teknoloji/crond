@@ -1,6 +1,31 @@
 # Changelog
 
-## 2.3.0 — unreleased
+## 2.3.1 — unreleased
+
+A production incident: a job with hours of work left had its lock released every other hour, and a second,
+then a third copy of it was started. The holder was alive on the same host. `ps` had a `COLUMNS=80` in its
+environment — procps-ng honours that even when writing to a pipe — and cut the 112-column runner line before
+its `--run-uniq-cron=` marker and the job's command line before its end. Both lookups answered "not running",
+the probe could still see itself, so `isUsable()` passed, and the verdict was `Dead`.
+
+### Fixed
+
+- **`SystemProcessProbe` asks `ps` for unlimited width (`-ww`)**, so a `COLUMNS` in the environment can no
+  longer cut a command line before the part that identifies it.
+
+### Added
+
+- **`LockVerdict::REASON_PROCESS_PROBE_BLIND`** — before concluding `Dead` on the local host, the daemon now
+  checks that the probe can see this very process's own marker, the one argument known to be on its command
+  line. A probe that cannot is not reading full command lines, and its "not found" for the holder proves
+  nothing: the verdict is `Unknown` and the lock is never released. This is the guard behind the `-ww` fix,
+  for whatever else may shorten a command line one day. Consumers that classify reasons should treat it like
+  `REASON_PROCESS_PROBE_UNAVAILABLE`: it does not clear itself.
+- `tests/unit/Crond/SystemProcessProbeTest.php` drives the real probe against the real `ps` in a child process
+  with `COLUMNS=80`. It fails on procps-ng without `-ww`; the BSD `ps` on macOS never truncates a pipe, so there
+  it only guards the recycled-pid branch.
+
+## 2.3.0 — 2026-08-31
 
 The theme of this release: crond's failure modes used to be silent. A lock leaked by a killed runner wedged its
 job forever while every tick logged a warning-level "lock failed"; a runner that could not even start was logged

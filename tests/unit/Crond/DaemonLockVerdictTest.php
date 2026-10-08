@@ -32,6 +32,9 @@ class DaemonLockVerdictTest extends ArgvIsolatedTestCase
         parent::setUp();
         $this->redis = new \CrondUnitTest\MockRedis();
         $this->probe = new \CrondUnitTest\MockProcessProbe();
+        // The probe sees this very process (pid 1) with its own marker intact; a probe that could not would be
+        // blind to every marker and is covered by its own test below.
+        $this->probe->runningPids['1'] = 'php crond.php --run-uniq-cron=' . self::JOB;
         $_SERVER['argv'] = [self::JOB, '--run-uniq-cron=' . self::JOB];
     }
 
@@ -75,6 +78,37 @@ class DaemonLockVerdictTest extends ArgvIsolatedTestCase
 
         $this->assertSame(LockVerdict::Unknown, $daemon->getLastLockVerdict());
         $this->assertSame(LockVerdict::REASON_PROCESS_PROBE_UNAVAILABLE, $daemon->getLastLockVerdictReason());
+    }
+
+    /**
+     * The production incident behind 2.3.1: `ps` honoured a COLUMNS=80 and cut every command line before the
+     * `--run-uniq-cron=` marker. The holder was alive, the probe still saw itself, and the lock was released.
+     * A probe that cannot see this process's own marker — the one argument known to be on its command line —
+     * is not reading full command lines, so its "not found" for the holder proves nothing.
+     */
+    public function testAProbeThatCannotSeeItsOwnMarkerIsNeverProofThatAHolderIsGone()
+    {
+        $this->probe->runningPids['1'] = 'php crond.php --run-un';
+
+        $daemon = $this->runWithLock(self::OWN_HOST, '123');
+
+        $this->assertSame(LockVerdict::Unknown, $daemon->getLastLockVerdict());
+        $this->assertSame(LockVerdict::REASON_PROCESS_PROBE_BLIND, $daemon->getLastLockVerdictReason());
+    }
+
+    public function testABlindProbeNeverReleasesALock()
+    {
+        $this->probe->runningPids['1'] = 'php crond.php --run-un';
+        $locker = new RedisLocker($this->redis);
+        $key = $locker->getJobUniqId(self::JOB);
+
+        $daemon = $this->daemon($locker);
+        $daemon->setAutoReleaseDeadLocks(true);
+        $this->seedLock(self::OWN_HOST, '123');
+        $this->startExpectingLockFailure($daemon);
+
+        $this->assertFalse($daemon->isLastLockReleased());
+        $this->assertNotNull($this->redis->get($key), 'A lock was released on the word of a blind probe.');
     }
 
     public function testAHolderOnAHostThatStillReportsInIsAlive()

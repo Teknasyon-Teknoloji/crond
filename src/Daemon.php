@@ -509,8 +509,9 @@ class Daemon
         }
 
         $probe = $this->getProcessProbe();
+        $marker = ' --' . $this->cronArgName . '=' . $lockId;
 
-        if ($probe->isProcessRunning($parsedJobValue['pid'], ' --' . $this->cronArgName . '=' . $lockId)) {
+        if ($probe->isProcessRunning($parsedJobValue['pid'], $marker)) {
             return $this->verdict(LockVerdict::Alive, LockVerdict::REASON_HOLDER_PROCESS_RUNNING);
         }
 
@@ -522,6 +523,13 @@ class Daemon
         // table can be read at all. A probe that answers nothing must not look like an empty process table.
         if (!$probe->isUsable()) {
             return $this->verdict(LockVerdict::Unknown, LockVerdict::REASON_PROCESS_PROBE_UNAVAILABLE);
+        }
+
+        // This process is the runner for this very job, so its own command line is known to carry the marker. A
+        // probe that cannot find it there is not reading full command lines (a `ps` cut short by COLUMNS did
+        // exactly this), and its "not found" for the holder is the same blindness, not evidence of a dead holder.
+        if (!$probe->isProcessRunning(getmypid(), $marker)) {
+            return $this->verdict(LockVerdict::Unknown, LockVerdict::REASON_PROCESS_PROBE_BLIND);
         }
 
         return $this->verdict(LockVerdict::Dead, LockVerdict::REASON_HOLDER_PROCESS_GONE);
